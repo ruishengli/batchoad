@@ -1,62 +1,104 @@
 package com.madao.oad;
 
-import android.content.ComponentName;
 import android.content.Context;
-import android.content.Intent;
-import android.content.ServiceConnection;
-import android.os.IBinder;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.widget.Toolbar;
+import android.text.TextUtils;
+import android.view.MenuItem;
+import android.widget.ListView;
 
-import com.ble.sdk.BleService;
-import com.ble.sdk.IBle;
-import com.madao.util.Logs;
+import com.madao.oad.adapter.CommonAdapter;
+import com.madao.oad.adapter.ViewHolder;
+import com.madao.oad.entry.BleBluetoothDevice;
+import com.madao.oad.presenter.MainPresenter;
+import com.madao.oad.view.OadView;
 
-public class MainActivity extends AppCompatActivity {
+import java.util.List;
+
+
+public class MainActivity extends AppCompatActivity implements OadView {
 
     private static final String TAG = MainActivity.class.getSimpleName();
-    private BleService mService;
-    private IBle mBle;
+
+    private ListView mListView;
+    private BluetoothAdapter mAdapter;
+    private MainPresenter mPresenter;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        startBleService();
+        ServiceManager.getInstance().startBleService(this);
+
+        initView();
+
+        mPresenter = new MainPresenter(this);
+        mPresenter.initialize();
     }
 
-    /**
-     * start ble service
-     */
-    public void startBleService() {
-        Intent bindIntent = new Intent(this, BleService.class);
-        bindService(bindIntent, mServiceConnection, Context.BIND_AUTO_CREATE);
-    }
+    private void initView () {
+        mListView = (ListView) findViewById(R.id.listview);
+        mAdapter = new BluetoothAdapter(this, R.layout.bluetooth_list_item, null);
+        mListView.setAdapter(mAdapter);
 
-    public void stopBleService() {
-        unbindService(mServiceConnection);
-    }
+        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+        toolbar.inflateMenu(R.menu.base_toolbar_menu);
 
-    private final ServiceConnection mServiceConnection = new ServiceConnection() {
-        @Override
-        public void onServiceConnected(ComponentName className, IBinder rawBinder) {
-            mService = ((BleService.LocalBinder) rawBinder).getService();
-            mBle = mService.getBle();
-            if (mBle == null) {
-                Logs.d(TAG, "adapterEnabled：mBle is null");
+        toolbar.setOnMenuItemClickListener(new Toolbar.OnMenuItemClickListener() {
+            @Override
+            public boolean onMenuItemClick(MenuItem item) {
+                switch (item.getItemId()) {
+                    case  R.id.scan:
+                    mPresenter.scan();
+                }
+                return false;
             }
-            if (mBle != null && !mBle.adapterEnabled()) {
-            }
+        });
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        ServiceManager.getInstance().stopBleService(this);
+        mPresenter.destroy();
+    }
+
+
+    @Override
+    public void addDevice(BleBluetoothDevice device) {
+        if (device != null) {
+            mAdapter.append(device);
+        }
+    }
+
+    @Override
+    public Context getContext() {
+        return this;
+    }
+
+    public class BluetoothAdapter extends CommonAdapter<BleBluetoothDevice> {
+
+        public BluetoothAdapter(Context context, int layoutId, List<BleBluetoothDevice> datas) {
+            super(context, layoutId, datas);
         }
 
         @Override
-        public void onServiceDisconnected(ComponentName classname) {
-            Logs.d(TAG, "onServiceDisconnected：");
-            mService = null;
+        public void convert(ViewHolder viewHolder, BleBluetoothDevice item) {
+            if (item != null) {
+                viewHolder.setText(R.id.label_id, item.getName()+"_" + converSerial(item.getAddress()) + "_v" +item.getFirmwareVersion());
+            }
         }
-    };
+    }
 
 
-    public IBle getIBle() {
-        return mBle;
+    private String converSerial(String address){
+        if(!TextUtils.isEmpty(address)) {
+            address = address.replace(":","");
+            if(address.length() > 4) {
+                return address.substring(address.length()-4);
+            }
+        }
+        return address;
     }
 }

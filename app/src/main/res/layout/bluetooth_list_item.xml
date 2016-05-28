@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:descendantFocusability="blocksDescendants"
+    android:gravity="center_vertical"
+    android:paddingBottom="12dp"
+    android:paddingLeft="10dp"
+    android:paddingRight="5dp"
+    android:paddingTop="12dp">
+
+    <ImageView
+        android:id="@+id/icon_id"
+        android:layout_width="18dip"
+        android:layout_height="21dip"
+        android:layout_centerVertical="true"
+        android:scaleType="fitXY"
+        android:src="@drawable/cyclo_watch_icon_d" />
+
+    <TextView
+        android:id="@+id/label_id"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerVertical="true"
+        android:layout_marginLeft="10dip"
+        android:layout_toRightOf="@id/icon_id"
+        android:gravity="center"
+        android:text="LEQI"
+        android:textColor="#ff808080"
+        android:textSize="16dip" />
+
+
+</RelativeLayout>
