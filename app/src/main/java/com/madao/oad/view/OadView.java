@@ -15,4 +15,21 @@ public interface OadView {
     void addDevice(BleBluetoothDevice device);
 
     Context getContext();
+
+    void showScanning() ;
+
+    void onScanEnd();
+
+    void clearDeviceList();
+
+    void showTopTip(String tip);
+
+    void disEnabledButton();
+    void enableButton();
+
+    void setButtonText(String text);
+    void showProgressBar();
+    void hideProgressBar();
+
+    void showUpgradeDlg(String title,String content);
 }

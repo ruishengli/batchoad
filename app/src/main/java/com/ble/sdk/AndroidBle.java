@@ -41,23 +41,23 @@ public class AndroidBle implements IBle, IBleRequestHandler {
 
     private boolean mOnConnSuccessDiscoverServer = true;
 
-   private ScanCallback mLeScanCallback = new ScanCallback() {
+   /*private ScanCallback mLeScanCallback = new ScanCallback() {
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
 
             mService.bleDeviceFound(result.getDevice(), result.getRssi(),
                     result.getScanRecord().getBytes(), BleService.DEVICE_SOURCE_SCAN);
         }
-    };
+    };*/
 
-    /*private BluetoothAdapter.LeScanCallback mLeScanCallback = new BluetoothAdapter.LeScanCallback() {
+    private BluetoothAdapter.LeScanCallback mLeScanCallback = new BluetoothAdapter.LeScanCallback() {
 
         @Override
         public void onLeScan(final BluetoothDevice device, int rssi, byte[] scanRecord) {
 
        mService.bleDeviceFound(device, rssi, scanRecord, BleService.DEVICE_SOURCE_SCAN);
         }
-    };*/
+    };
 
     private BluetoothGattCallback mGattCallback = new BluetoothGattCallback() {
         @Override
@@ -243,8 +243,8 @@ public class AndroidBle implements IBle, IBleRequestHandler {
                 UUID[]{UUID.fromString(UUIDUtils.PARAMETER_SERVER)
                 , UUID.fromString(UUIDUtils.RIDINGDATA_SERVER)};
 */
-      //  mBtAdapter.startLeScan(mLeScanCallback);
-        mBtAdapter.getBluetoothLeScanner().startScan(mLeScanCallback);
+       mBtAdapter.startLeScan(mLeScanCallback);
+       // mBtAdapter.getBluetoothLeScanner().startScan(mLeScanCallback);
     }
 
     @Override
@@ -254,8 +254,8 @@ public class AndroidBle implements IBle, IBleRequestHandler {
 
     @Override
     public void stopScan() {
-        mBtAdapter.getBluetoothLeScanner().stopScan(mLeScanCallback);
-        //mBtAdapter.stopLeScan(mLeScanCallback);
+       //mBtAdapter.getBluetoothLeScanner().stopScan(mLeScanCallback);
+        mBtAdapter.stopLeScan(mLeScanCallback);
     }
 
     @Override
