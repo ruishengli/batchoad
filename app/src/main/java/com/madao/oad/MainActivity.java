@@ -143,6 +143,27 @@ public class MainActivity extends AppCompatActivity implements OadView, View.OnC
         mButton.hideProgressBar();
     }
 
+    @Override
+    public void showUpgradeView() {
+        mUpgradeView.setVisibility(View.VISIBLE);
+    }
+
+    @Override
+    public void hideUpgradeView() {
+        mUpgradeView.setVisibility(View.GONE);
+    }
+
+
+    @Override
+    public void setUpgradeResult(String text) {
+        mUpgradeResult.setText(text);
+    }
+
+    @Override
+    public void setCurUpgradeStatus(String text) {
+        mCurUpgradeStatus.setText(text);
+    }
+
 
     @Override
     public void showUpgradeDlg(String title, String content) {

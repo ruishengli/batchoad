@@ -32,4 +32,12 @@ public interface OadView {
     void hideProgressBar();
 
     void showUpgradeDlg(String title,String content);
+
+    void showUpgradeView();
+
+    void hideUpgradeView();
+
+    void setUpgradeResult(String text);
+
+    void setCurUpgradeStatus(String text);
 }
