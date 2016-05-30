@@ -64,8 +64,20 @@ public class DeviceParseUtil {
         if (name.indexOf(DEFAULT_BOOT) >= 0) {//
         }
 
-        return new BleBluetoothDevice(connectDevice.getAddress(), name, "", version);
+        return new BleBluetoothDevice(connectDevice.getAddress(), name + "_" + converSerial(connectDevice.getAddress()) + "_v" + version, "", version);
     }
+
+
+    private static String converSerial(String address) {
+        if (!TextUtils.isEmpty(address)) {
+            address = address.replace(":", "");
+            if (address.length() > 4) {
+                return address.substring(address.length() - 4);
+            }
+        }
+        return address;
+    }
+
 
     private static int getFirmwareVersion(byte[] scanRecord) {
         int firmwareVersionStartIndex = 32;

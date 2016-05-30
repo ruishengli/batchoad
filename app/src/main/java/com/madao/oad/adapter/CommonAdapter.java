@@ -29,6 +29,11 @@ public abstract class CommonAdapter<T> extends BaseAdapter {
         notifyDataSetChanged();
     }
 
+    public void clear() {
+        mDatas = new ArrayList<>();
+        notifyDataSetChanged();
+    }
+
     @Override
     public int getCount() {
         return mDatas == null ? 0 :mDatas.size();

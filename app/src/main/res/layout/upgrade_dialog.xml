@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/keyboard_edit_shape"
+    android:minHeight="200dp"
+    android:orientation="vertical">
+
+    <TextView
+        android:id="@+id/upgrade_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="25dp"
+        android:text="正在升级请勿退出"
+        android:textColor="#FF4081"
+        android:textSize="18dip" />
+
+
+    <TextView
+        android:id="@+id/upgrade_tip1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:padding="5dp"
+        android:paddingLeft="15dp"
+        android:paddingRight="10dp"
+        android:text="检测到新版本"
+        android:textColor="#ff808080"
+        android:textSize="14dip" />
+
+
+    <View
+        android:layout_width="fill_parent"
+        android:layout_height="1dp"
+        android:background="#ffe8e8e8" />
+
+
+    <TextView
+        android:id="@+id/upgrade_tip2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:padding="5dp"
+        android:paddingLeft="15dp"
+        android:paddingRight="10dp"
+        android:text="检测到新版本"
+        android:textColor="#ff808080"
+        android:textSize="14dip" />
+
+
+</LinearLayout>
