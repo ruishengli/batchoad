@@ -24,13 +24,23 @@ public class DeviceParseUtil {
     static final byte[] FILTER_BROADCAST_NAME_1 = new byte[]{77, 65, 68, 65, 79, 32, 76, 69, 81, 73};
     static final byte[] FILTER_BROADCAST_NAME_2 = new byte[]{77, 65, 68, 65, 79, 32, 66, 79, 79, 84};
 
+    //E0:E5:CF:C2:90:3D
+    //5C:F8:21:D2:0E:67
 
+    public static boolean isOwnDevice(String address) {
+        if(address.equals("E0:E5:CF:C2:90:3D") || address.equals("5C:F8:21:D2:0E:67")) {
+            return true;
+        }
+        return false;
+    }
     public static boolean isOwnDevice(byte[] scanRecord) {
         boolean isOwn = false;
+
         int nameStartIndex = 15;
         int nameLength = 10;
 
         int bootNameStartIndex = 9;
+
 
         if (scanRecord != null && scanRecord.length > 0) {
             try {
@@ -61,10 +71,17 @@ public class DeviceParseUtil {
             return null;
         }
 
-        if (name.indexOf(DEFAULT_BOOT) >= 0) {//
+        if (connectDevice.getName().indexOf(DEFAULT_BOOT) >= 0) {//
+            version = 0;
         }
 
-        return new BleBluetoothDevice(connectDevice.getAddress(), name + "_" + converSerial(connectDevice.getAddress()) + "_v" + version, "", version);
+        name = name + "_" + converSerial(connectDevice.getAddress()) ;
+        if(version > 0) {
+            name += "_v" + version;
+        } else {
+            name += "_疑似砖机" ;
+        }
+        return new BleBluetoothDevice(connectDevice.getAddress(),name , "", version);
     }
 
 

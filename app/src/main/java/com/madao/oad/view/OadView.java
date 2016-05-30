@@ -40,4 +40,6 @@ public interface OadView {
     void setUpgradeResult(String text);
 
     void setCurUpgradeStatus(String text);
+
+    void setUpgradeTitle(String title);
 }

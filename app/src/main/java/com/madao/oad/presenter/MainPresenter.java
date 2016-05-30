@@ -20,7 +20,6 @@ import com.madao.util.DeviceParseUtil;
 import com.madao.util.Logs;
 
 import java.util.Arrays;
-import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
@@ -34,7 +33,7 @@ import java.util.Set;
  * @author: or
  * @since: on 2016/5/28.
  */
-public class MainPresenter {
+public class MainPresenter implements BluetoothManager.BluetoothCallback {
 
     private final String TAG = MainPresenter.class.getSimpleName();
 
@@ -47,9 +46,9 @@ public class MainPresenter {
     private final int MESSAGE_UPDATE_CUR_LOG = 7;
     private final int MESSAGE_UPDATE_PROGRESSBAR = 8;
     private final int MESSAGE_START_UPGRADE = 9;
+    private final int MESSAGE_UPDATE_OVER = 10;
 
     private static final int DEFAULT_SCAN_TIME = 30000;
-    private BluetoothDeviceReceiver mReceiver;
     private Firmware mServerFirmware;
 
     private Handler mHandler = new Handler() {
@@ -75,22 +74,25 @@ public class MainPresenter {
                         mView.showUpgradeView();
                         break;
                     case MESSAGE_UPDATE_OAD_RESULT:
-                        mView.setUpgradeResult((String)msg.obj);
+                        mView.setUpgradeResult((String) msg.obj);
                         break;
                     case MESSAGE_UPDATE_CUR_LOG:
-                        mView.setCurUpgradeStatus((String)msg.obj);
+                        mView.setCurUpgradeStatus((String) msg.obj);
                         break;
                     case MESSAGE_UPDATE_PROGRESSBAR:
                         mView.showProgressBar();
                         mView.disEnabledButton();
                         String s = "";
-                        if(msg.obj != null) {
-                            s = (String)msg.obj;
+                        if (msg.obj != null) {
+                            s = (String) msg.obj;
                         }
                         mView.setButtonText(s);
                         break;
                     case MESSAGE_START_UPGRADE:
                         start();
+                        break;
+                    case MESSAGE_UPDATE_OVER:
+                        mView.setUpgradeTitle("更新完成");
                 }
             }
 
@@ -100,27 +102,30 @@ public class MainPresenter {
     private OadView mView;
     private Map<String, BleBluetoothDevice> mScanResult;
     private Queue<BleBluetoothDevice> mWaitUpgradeDevices;
-    private boolean mOading;
+    private boolean mOadRunning;
     private int mWaitUpgradeDeviceCount;
+    private BluetoothManager mBluetoothManager;
 
     public MainPresenter(OadView view) {
         this.mView = view;
     }
 
+    public boolean oadRunning() {
+        return mOadRunning;
+    }
     public void initialize() {
         mWaitUpgradeDevices = new LinkedList();
         mScanResult = new LinkedHashMap<>();
-        mReceiver = new BluetoothDeviceReceiver();
-        mView.getContext().registerReceiver(mReceiver, BleService.getIntentFilter());
+        mBluetoothManager = new BluetoothManager(this);
     }
 
     public void scan() {
         stopScan();
         mScanResult.clear();
         mView.clearDeviceList();
-        if (ServiceManager.getInstance().getIBle() != null) {
+        if (mBluetoothManager.bleEnabled()) {
             mView.showScanning();
-            ServiceManager.getInstance().getIBle().startScan();
+            mBluetoothManager.startScan();
             mHandler.postDelayed(stopScanRunnable, DEFAULT_SCAN_TIME);
         }
     }
@@ -128,9 +133,7 @@ public class MainPresenter {
     public void stopScan() {
         mView.onScanEnd();
         mHandler.removeCallbacks(stopScanRunnable);
-        if (ServiceManager.getInstance().getIBle() != null) {
-            ServiceManager.getInstance().getIBle().stopScan();
-        }
+        mBluetoothManager.stopScan();
     }
 
 
@@ -163,6 +166,7 @@ public class MainPresenter {
             return;
         }
 
+        mHandler.sendMessage(mHandler.obtainMessage(MESSAGE_UPDATE_PROGRESSBAR,"正在下载固件")) ;
         String saveFile = "firmware_" + mServerFirmware.getVersion() + ".bin";
         NetHelper.getInstance().setDownloadCallback(downloadCallback);
         NetHelper.getInstance().downloadFw(downLoadDir, saveFile, mServerFirmware.getImgUrl());
@@ -170,7 +174,7 @@ public class MainPresenter {
 
     public void destroy() {
         stopScan();
-        mView.getContext().unregisterReceiver(mReceiver);
+        mBluetoothManager.onDestroy();
         NetHelper.getInstance().setQueryVersionCallback(null);
         NetHelper.getInstance().setDownloadCallback(null);
         mView = null;
@@ -189,26 +193,65 @@ public class MainPresenter {
         mHandler.sendMessage(mHandler.obtainMessage(MESSAGE_SHOW_TOP_TIP, topTip));
     }
 
-    private class BluetoothDeviceReceiver extends BroadcastReceiver {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            String action = intent.getAction();
-            Bundle extras = intent.getExtras();
+    @Override
+    public void onFoundDevice(BluetoothDevice device, byte[] scanRecord) {
+        addDevice(device, scanRecord);
+    }
 
-            if (BleService.BLE_NOT_SUPPORTED.equals(action)) { // ble不支持
-
-            } else if (BleService.BLE_DEVICE_FOUND.equals(action)) { // 发现新设备
-                byte[] scanRecor = intent.getByteArrayExtra(BleService.EXTRA_SCAN_RECORD);
-                final BluetoothDevice device = extras.getParcelable(BleService.EXTRA_DEVICE);
-                Logs.d(TAG, "device " + device.getAddress() + ",name:" + device.getName()
-                        + " scanRecor :" + Arrays.toString(scanRecor) + " servie :");
-
-                if (DeviceParseUtil.isOwnDevice(scanRecor)) {
-                    addDevice(device, scanRecor);
-                }
-            }
+    @Override
+    public void onConnFailed(String address) {
+        if (address.equals(mCurDevice.getAddress())) {
+            logs.append("连接失败 \n");
+            mHandler.sendMessage(mHandler.obtainMessage(MESSAGE_UPDATE_CUR_LOG, logs.toString()));
         }
     }
+
+    @Override
+    public void onConnSuccess(String address) {
+        if (address.equals(mCurDevice.getAddress())) {
+            logs.append("连接成功 \n");
+            mHandler.sendMessage(mHandler.obtainMessage(MESSAGE_UPDATE_CUR_LOG, logs.toString()));
+        }
+
+    }
+
+    private int lastProgress = 0;
+    private int oadSuccessCount = 0;
+    private int oadFailedCount;
+
+    @Override
+    public void onProgressUpdate(int progress) {
+        if(lastProgress == progress) {
+            return;
+        }
+        lastProgress = progress;
+        if(progress == 1) {
+            logs.append("正在升级:" + progress + "% \n");
+        } else {
+            String s =logs.toString();
+            s = s.replaceAll(":\\d{1,}", ":" + progress);
+            logs = new StringBuffer();
+            logs.append(s);
+        }
+
+        mHandler.sendMessage(mHandler.obtainMessage(MESSAGE_UPDATE_CUR_LOG, logs.toString()));
+    }
+
+    @Override
+    public void onOadResult(int code) {
+        if(code == 0) {
+            oadSuccessCount ++;
+        } else {
+            oadFailedCount ++;
+        }
+        String tip = code == 0 ? "升级成功" : "升级失败";
+        logs.append(tip + "\n");
+        mHandler.sendMessage(mHandler.obtainMessage(MESSAGE_UPDATE_CUR_LOG, logs.toString()));
+        updateCurOadResult();
+        mCurDevice =null;
+        processNext();
+    }
+
 
     private void addDevice(BluetoothDevice device, byte[] scanRecord) {
         if (!mScanResult.containsKey(device.getAddress())) {
@@ -240,7 +283,11 @@ public class MainPresenter {
             Iterator<Map.Entry<String, BleBluetoothDevice>> iterator = set.iterator();
             while (iterator.hasNext()) {
                 BleBluetoothDevice device = iterator.next().getValue();
-                if (device != null && device.getFirmwareVersion() > firmware.getVersion()) {
+               /* if (device != null && device.getFirmwareVersion() > firmware.getVersion()) {
+                    mWaitUpgradeDevices.offer(device.clone());
+                }*/
+
+                if (device != null) {
                     mWaitUpgradeDevices.offer(device.clone());
                 }
             }
@@ -261,21 +308,22 @@ public class MainPresenter {
                 prepareOad(filePath);
             } else {
                 showTopTip("下载固件失败");
+                mHandler.sendEmptyMessage(MESSAGE_QUERY_VERSION_OVER);
             }
         }
     };
 
     private void prepareOad(String filePath) {
-        if (!OadManager.getInstance().loadFile(filePath)) {
+        if (!mBluetoothManager.loadFile(filePath)) {
             showTopTip("加载固件文件失败");
             return;
         }
 
-        mOading = true;
+        mOadRunning = true;
         mHandler.sendEmptyMessage(MESSAGE_SHOW_UPGRADE_VIEW);
 
         mWaitUpgradeDeviceCount = mWaitUpgradeDevices.size();
-        mHandler.sendMessage(mHandler.obtainMessage(MESSAGE_UPDATE_OAD_RESULT, "(0/" + mWaitUpgradeDeviceCount + " )升级成功"));
+        updateCurOadResult();
         mHandler.sendEmptyMessage(MESSAGE_UPDATE_PROGRESSBAR);
 
 
@@ -284,28 +332,50 @@ public class MainPresenter {
 
     private BleBluetoothDevice mCurDevice;
     private StringBuffer logs = new StringBuffer();
+
+    private void updateCurOadResult() {
+        mHandler.sendMessage(mHandler.obtainMessage(MESSAGE_UPDATE_OAD_RESULT, "("+oadSuccessCount+"/" + mWaitUpgradeDeviceCount + " )升级成功"));
+    }
     private void start() {
-        if(mWaitUpgradeDevices != null && !mWaitUpgradeDevices.isEmpty()) {
+        if (mWaitUpgradeDevices != null && !mWaitUpgradeDevices.isEmpty()) {
             processNext();
         }
     }
 
     private void processNext() {
-        if(mCurDevice != null) {
+        if (mCurDevice != null) {
+            return;
+        }
+        if(mWaitUpgradeDevices == null || mWaitUpgradeDevices.isEmpty()) {
+            //
+            String tip = "共" + mWaitUpgradeDeviceCount + "台设备需要更新,成功"+ oadSuccessCount + "台,失败"+oadFailedCount+"台";
+            mHandler.sendMessage(mHandler.obtainMessage(MESSAGE_UPDATE_OAD_RESULT, tip));
+
+            logs.append("更新完成" + "\n");
+            mHandler.sendMessage(mHandler.obtainMessage(MESSAGE_UPDATE_CUR_LOG, logs.toString()));
+
+            mHandler.sendEmptyMessage(MESSAGE_UPDATE_OVER);
+            mOadRunning = false;
             return;
         }
         mCurDevice = mWaitUpgradeDevices.poll();
         connection(mCurDevice);
     }
 
+
+
     private void connection(BleBluetoothDevice device) {
-        if(device != null) {
+        logs = new StringBuffer();
+        if (device != null) {
+            lastProgress = 0;
             logs.append("正在连接:" + device.getName() + "\n");
-            mHandler.sendMessage(mHandler.obtainMessage(MESSAGE_UPDATE_CUR_LOG,logs.toString())) ;
+            mHandler.sendMessage(mHandler.obtainMessage(MESSAGE_UPDATE_CUR_LOG, logs.toString()));
+            mBluetoothManager.startOad(device.getAddress());
         } else {
             mCurDevice = null;
             processNext();
         }
     }
+
 
 }

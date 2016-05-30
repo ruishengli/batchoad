@@ -12,6 +12,7 @@ import android.view.View;
 import android.view.WindowManager;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.madao.oad.adapter.DeviceListAdapter;
 import com.madao.oad.entry.BleBluetoothDevice;
@@ -153,6 +154,10 @@ public class MainActivity extends AppCompatActivity implements OadView, View.OnC
         mUpgradeView.setVisibility(View.GONE);
     }
 
+    @Override
+    public void setUpgradeTitle(String title) {
+        mUpgradeTitle.setText(title);
+    }
 
     @Override
     public void setUpgradeResult(String text) {
@@ -220,6 +225,21 @@ public class MainActivity extends AppCompatActivity implements OadView, View.OnC
         mPresenter.destroy();
     }
 
+
+    @Override
+    public void onBackPressed() {
+        if (mPresenter.oadRunning()) {
+            Toast.makeText(this, "正在升级请勿退出", Toast.LENGTH_LONG).show();
+        } else {
+            if(mUpgradeView.getVisibility() == View.VISIBLE) {
+                hideUpgradeView();
+                resetViewStatus();
+                return;
+            }
+            super.onBackPressed();
+        }
+    }
+
     @Override
     public void onClick(View v) {
         switch (v.getId()) {
@@ -228,6 +248,11 @@ public class MainActivity extends AppCompatActivity implements OadView, View.OnC
         }
     }
 
+    private void resetViewStatus() {
+        setUpgradeTitle("正在升级请勿退出");
+        mUpgradeResult.setText("");
+        mCurUpgradeStatus.setText("");
+    }
 
     /**
      * 保持屏幕长亮
